@@ -1,85 +1,46 @@
 import React, { useEffect, useState } from "react";
-import type { Cocktail, CocktailIn } from "./types";
-import {
-  listCocktails,
-  createCocktail,
-  updateCocktail,
-  deleteCocktail,
-  toggleFavorite,
-} from "./api";
-import CocktailForm from "./components/CocktailForm";
-import CocktailList from "./components/CocktailList";
+import { Routes, Route, Link } from "react-router-dom";
+import type { Cocktail } from "./types";
+import { listCocktails, deleteCocktail, toggleFavorite } from "./api";
+import ListPage from "./pages/ListPage";
+import AddPage from "./pages/AddPage";
 
 export default function App() {
   const [cocktails, setCocktails] = useState<Cocktail[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<CocktailIn | undefined>();
 
-  const load = async () => {
-    const data = await listCocktails();
-    setCocktails(data);
-  };
-  useEffect(() => {
-    load();
-  }, []);
+  const load = async () => setCocktails(await listCocktails());
+  useEffect(() => { load(); }, []);
 
-  const onSave = async (data: CocktailIn, id?: string | null) => {
-    if (id) await updateCocktail(id, data);
-    else await createCocktail(data);
-    await load();
-    cancelEdit();
-  };
-
-  const startEdit = (c: Cocktail) => {
-    setEditingId(c.id);
-    const { id, ...rest } = c;
-    setEditingData(rest);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditingData(undefined);
-  };
-
-  const onDelete = async (id: string) => {
-    await deleteCocktail(id);
-    await load();
-  };
-
-  const onToggleFavorite = async (c: Cocktail) => {
-    await toggleFavorite(c);
-    await load();
-  };
+  const onDelete = async (id: string) => { await deleteCocktail(id); await load(); }
+  const onToggleFavorite = async (c: Cocktail) => { await toggleFavorite(c); await load(); }
 
   return (
-    <div style={{ fontFamily: "system-ui", margin: 24, maxWidth: 1000 }}>
-      <h1>Cocktails</h1>
+    <>
+      <header className="header">
+        <nav className="nav container">
+          <Link to="/" style={{textDecoration:'none', color:'inherit'}}>
+            <span className="brand">🍹 Cocktails</span>
+          </Link>
+          <span className="badge">FastAPI · React · MongoDB</span>
+          <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+            <Link to="/" className="btn ghost">Home</Link>
+            <Link to="/new" className="btn primary">Add Cocktail</Link>
+          </div>
+        </nav>
+      </header>
 
-      <div
-        style={{
-          display: "grid",
-          gap: 16,
-          gridTemplateColumns: "1fr 1fr",
-          alignItems: "start",
-        }}
-      >
-        <CocktailForm
-          initial={editingData}
-          editingId={editingId}
-          onSave={onSave}
-          onCancel={cancelEdit}
-        />
-
-        <div>
-          <h2>All Cocktails</h2>
-          <CocktailList
-            items={cocktails}
-            onEdit={startEdit}
-            onDelete={onDelete}
-            onToggleFavorite={onToggleFavorite}
-          />
-        </div>
-      </div>
-    </div>
+      <main className="container" style={{paddingTop:24}}>
+        <Routes>
+          <Route path="/" element={
+            <ListPage
+              items={cocktails}
+              onDelete={onDelete}
+              onToggleFavorite={onToggleFavorite}
+            />
+          } />
+          <Route path="/new" element={<AddPage />} />
+        </Routes>
+      </main>
+    </>
   );
 }
