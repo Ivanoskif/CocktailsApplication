@@ -1,0 +1,41 @@
+version: '3.9'
+name: ci-cd-cocktails
+
+services:
+  mongo:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: cocktailsdb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      MONGO_URI: mongodb://root:example@mongo:27017/
+      MONGO_DB: cocktailsdb
+    depends_on:
+      - mongo
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  mongo_data:
