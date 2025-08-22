@@ -1,44 +1,48 @@
 import type { Cocktail, CocktailIn } from "./types";
 
-const API_BASE: string =
-  (import.meta as any).env?.VITE_API_BASE || "http://localhost:8000";
+export const API_BASE: string = (import.meta as any).env?.VITE_API_BASE ?? "";
+
+const COCKTAILS_URL = `${API_BASE}/api/cocktails/`;
+
+async function http<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init);
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`HTTP ${res.status}: ${msg}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 export async function listCocktails(): Promise<Cocktail[]> {
-  const r = await fetch(`${API_BASE}/api/cocktails`);
-  if (!r.ok) throw new Error("Failed to load cocktails");
-  return r.json();
+  return http<Cocktail[]>(COCKTAILS_URL);
 }
 
 export async function createCocktail(body: CocktailIn): Promise<Cocktail> {
-  const r = await fetch(`${API_BASE}/api/cocktails`, {
+  return http<Cocktail>(COCKTAILS_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error("Failed to create");
-  return r.json();
 }
 
-export async function updateCocktail(
-  id: string,
-  body: CocktailIn
-): Promise<Cocktail> {
-  const r = await fetch(`${API_BASE}/api/cocktails/${id}`, {
+export async function updateCocktail(id: string, body: CocktailIn): Promise<Cocktail> {
+  return http<Cocktail>(`${API_BASE}/api/cocktails/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error("Failed to update");
-  return r.json();
 }
 
 export async function deleteCocktail(id: string): Promise<void> {
-  const r = await fetch(`${API_BASE}/api/cocktails/${id}`, { method: "DELETE" });
-  if (!r.ok) throw new Error("Failed to delete");
+  const res = await fetch(`${API_BASE}/api/cocktails/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`HTTP ${res.status}: ${msg}`);
+  }
 }
 
 export async function toggleFavorite(c: Cocktail): Promise<Cocktail> {
-  const updated: CocktailIn = {
+  const payload: CocktailIn = {
     name: c.name,
     category: c.category,
     alcoholic: c.alcoholic,
@@ -47,5 +51,5 @@ export async function toggleFavorite(c: Cocktail): Promise<Cocktail> {
     ingredients: c.ingredients,
     instructions: c.instructions,
   };
-  return updateCocktail(c.id, updated);
+  return updateCocktail(c.id, payload);
 }

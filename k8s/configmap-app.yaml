@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: cocktails
+data:
+  MONGO_DB: cocktailsdb
+  CORS_ORIGINS: "*"

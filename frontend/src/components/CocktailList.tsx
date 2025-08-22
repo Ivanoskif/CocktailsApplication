@@ -15,7 +15,7 @@ const Rating = ({ value }: { value?: number }) => {
 
 export default function CocktailList({ items, onDelete, onToggleFavorite }: Props) {
   if (!items.length) {
-    return <div className="card">Нема коктели. Додај прв со „Add Cocktail“.</div>;
+    return <div className="card">Empty! Add cocktail.</div>;
   }
 
   return (

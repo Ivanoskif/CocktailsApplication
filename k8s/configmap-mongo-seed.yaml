@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: cocktails
+data:
+  mongo-init.js: |-
+    const appdb = db.getSiblingDB('cocktailsdb');
+    appdb.createCollection('cocktails');
+    appdb.cocktails.insertMany([
+      { name:'Margarita', category:'Classic', alcoholic:true, isFavorite:true, rating:5,
+        ingredients:[{name:'Tequila',amount:50,unit:'ml'},{name:'Triple Sec',amount:25,unit:'ml'},{name:'Lime Juice',amount:25,unit:'ml'}],
+        instructions:'Shake with ice, strain into salt-rimmed glass.' },
+      { name:'Virgin Mojito', category:'Mocktail', alcoholic:false, isFavorite:false, rating:4,
+        ingredients:[{name:'Lime',amount:1,unit:'pc'},{name:'Mint',amount:10,unit:'leaves'},{name:'Soda',amount:120,unit:'ml'}],
+        instructions:'Muddle mint & lime, add ice, top with soda.' }
+    ]);
