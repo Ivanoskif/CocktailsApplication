@@ -1,0 +1,47 @@
+name: CD – Deploy to AKS (Cocktails)
+
+on:
+  workflow_run:
+    workflows: ["CI – Build & Push to Docker Hub (Cocktails)"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      AKS_RG: cocktails-rg
+      AKS_CLUSTER: cocktails-aks
+      KUBE_NAMESPACE: cocktails
+      API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-cocktails-backend:latest
+      FE_IMAGE:  ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-cocktails-frontend:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.AKS_RG }}
+          cluster-name: ${{ env.AKS_CLUSTER }}
+
+      - name: Apply Kubernetes manifests (namespace first)
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/secret-db.yaml -f k8s/configmap-app.yaml -f k8s/configmap-mongo-seed.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/mongo-statefulset.yaml -f k8s/mongo-svc.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/api-svc.yaml -f k8s/frontend-svc.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/ingress.yaml
+
+      - name: Update images to latest and restart
+        run: |
+          kubectl -n $KUBE_NAMESPACE set image deployment/api api=$API_IMAGE
+          kubectl -n $KUBE_NAMESPACE set image deployment/frontend frontend=$FE_IMAGE
+          kubectl -n $KUBE_NAMESPACE rollout status deployment/api --timeout=180s
+          kubectl -n $KUBE_NAMESPACE rollout status deployment/frontend --timeout=180s

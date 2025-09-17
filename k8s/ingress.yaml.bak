@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: cocktails.145.133.97.172.nip.io
+    - host: cocktails.local
       http:
         paths:
           - path: /

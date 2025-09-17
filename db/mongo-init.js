@@ -25,15 +25,5 @@ appdb.cocktails.insertMany([
       { name: 'Soda', amount: 120, unit: 'ml' }
     ],
     instructions: 'Muddle mint and lime, add ice, top with soda.'
-  },
-  {
-    name: 'Aperol Spritz', category: 'Aperitif', alcoholic: true, isFavorite: false, rating: 5,
-    ingredients: [
-      { name: 'Aperol', amount: 60, unit: 'ml' },
-      { name: 'Prosseco', amount: 90, unit: 'ml' },
-      { name: 'Soda', amount: 60, unit: 'ml' },
-      { name: 'Orange', amount: 1, unit: 'Slice' }
-    ],
-    instructions: 'Place ice cubes in a stemmed balloon glass and mix with all ingredients together.'
   }
 ]);
