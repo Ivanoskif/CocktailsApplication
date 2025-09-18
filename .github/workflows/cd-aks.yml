@@ -5,43 +5,63 @@ on:
     workflows: ["CI – Build & Push to Docker Hub (Cocktails)"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-aks
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       AKS_RG: cocktails-rg
       AKS_CLUSTER: cocktails-aks
       KUBE_NAMESPACE: cocktails
-      API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-cocktails-backend:latest
-      FE_IMAGE:  ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-cocktails-frontend:latest
+      DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Azure login
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Set AKS context
-        uses: azure/aks-set-context@v4
+      - uses: azure/aks-set-context@v4
         with:
           resource-group: ${{ env.AKS_RG }}
           cluster-name: ${{ env.AKS_CLUSTER }}
 
-      - name: Apply Kubernetes manifests (namespace first)
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.6
+
+      - name: Apply Kubernetes manifests
         run: |
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -n $KUBE_NAMESPACE -f k8s/secret-db.yaml -f k8s/configmap-app.yaml -f k8s/configmap-mongo-seed.yaml
           kubectl apply -n $KUBE_NAMESPACE -f k8s/mongo-statefulset.yaml -f k8s/mongo-svc.yaml
-          kubectl apply -n $KUBE_NAMESPACE -f k8s/api-svc.yaml -f k8s/frontend-svc.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/api-deploy.yaml -f k8s/api-svc.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/frontend-deploy.yaml -f k8s/frontend-svc.yaml
           kubectl apply -n $KUBE_NAMESPACE -f k8s/ingress.yaml
 
-      - name: Update images to latest and restart
+      - name: Set images to current commit SHA
+        shell: bash
         run: |
-          kubectl -n $KUBE_NAMESPACE set image deployment/api api=$API_IMAGE
-          kubectl -n $KUBE_NAMESPACE set image deployment/frontend frontend=$FE_IMAGE
-          kubectl -n $KUBE_NAMESPACE rollout status deployment/api --timeout=180s
-          kubectl -n $KUBE_NAMESPACE rollout status deployment/frontend --timeout=180s
+          SHA="${GITHUB_SHA}"
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          fi
+          SHORT_SHA=$(echo "$SHA" | cut -c1-7)
+          kubectl -n "$KUBE_NAMESPACE" set image deployment/api api="$DOCKER_USER/ci-cd-cocktails-backend:sha-$SHORT_SHA" --record
+          kubectl -n "$KUBE_NAMESPACE" set image deployment/frontend frontend="$DOCKER_USER/ci-cd-cocktails-frontend:sha-$SHORT_SHA" --record
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n $KUBE_NAMESPACE rollout status deployment/api --timeout=300s
+          kubectl -n $KUBE_NAMESPACE rollout status deployment/frontend --timeout=300s
+
+      - name: Show service and ingress
+        run: |
+          kubectl -n $KUBE_NAMESPACE get pods,svc,ingress -o wide
