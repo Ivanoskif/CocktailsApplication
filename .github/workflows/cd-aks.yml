@@ -44,7 +44,7 @@ jobs:
           kubectl apply -n $KUBE_NAMESPACE -f k8s/mongo-statefulset.yaml -f k8s/mongo-svc.yaml
           kubectl apply -n $KUBE_NAMESPACE -f k8s/api-deploy.yaml -f k8s/api-svc.yaml
           kubectl apply -n $KUBE_NAMESPACE -f k8s/frontend-deploy.yaml -f k8s/frontend-svc.yaml
-          kubectl apply -n $KUBE_NAMESPACE -f k8s/ingress.yaml
+          kubectl apply -n $KUBE_NAMESPACE -f k8s/ingress.aks.yaml
 
       - name: Set images to current commit SHA
         shell: bash
